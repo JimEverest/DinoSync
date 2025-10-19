@@ -50,4 +50,8 @@ htmlcov/
 *.bak
 .cache/
 
+# 私密文件
+PYPI_TOKEN_PRIVATE.txt
+*_PRIVATE.*
+
 
