@@ -1,0 +1,17 @@
+# Dinox Python Client 依赖
+
+# 核心依赖
+aiohttp>=3.9.0
+# asyncio 是 Python 3.4+ 的标准库，无需安装
+python-dotenv>=1.0.0  # 用于加载 .env 文件
+
+# 测试依赖
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0
+
+# 开发依赖（可选）
+black>=23.0.0
+flake8>=6.0.0
+mypy>=1.0.0
+
