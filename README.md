@@ -11,13 +11,13 @@
 
 ## 📦 安装
 
-### 通过 PyPI 安装（推荐）
+### 方法一：通过 PyPI 安装（推荐）
 
 ```bash
 pip install dinox-api
 ```
 
-### 从源码安装
+### 方法二：从源码安装
 
 ```bash
 git clone https://github.com/JimEverest/DinoSync.git
@@ -41,13 +41,40 @@ pip install -e .
 
 ## 🚀 快速开始
 
-### 1. 安装依赖
+### 使用 PyPI 包（pip install dinox-api）
+
+如果你通过 `pip install dinox-api` 安装，可以直接开始使用：
+
+```python
+import asyncio
+from dinox_client import DinoxClient  # 导入方式完全相同
+
+async def main():
+    # 使用你的 API Token
+    async with DinoxClient(api_token="YOUR_TOKEN") as client:
+        # 获取笔记列表
+        notes = await client.get_notes_list()
+        print(f"获取到 {len(notes)} 天的笔记")
+
+asyncio.run(main())
+```
+
+**注意事项：**
+- 📌 模块名是 `dinox_client`（下划线），不是 `dinox-api`（连字符）
+- 📌 使用方法与源码安装完全相同
+- 📌 支持所有文档中描述的功能和配置选项
+
+### 从源码使用
+
+如果你是从 GitHub 克隆的项目，请按以下步骤操作：
+
+#### 1. 安装依赖
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. 配置 API Token
+#### 2. 配置 API Token
 
 复制环境变量模板并配置您的 Token：
 
@@ -65,7 +92,7 @@ copy env.example .env
 DINOX_API_TOKEN=your_actual_token_here
 ```
 
-### 3. 基础使用
+#### 3. 基础使用
 
 ```python
 import asyncio
@@ -89,6 +116,49 @@ asyncio.run(main())
 ---
 
 ## 📚 主要功能
+
+### PyPI 包完整使用示例
+
+通过 `pip install dinox-api` 安装后，以下是完整的使用示例：
+
+```python
+# 1. 基础配置
+from dinox_client import DinoxClient, DinoxConfig
+import asyncio
+
+# 方式一：直接传入 token
+client = DinoxClient(api_token="YOUR_TOKEN")
+
+# 方式二：使用配置对象（更灵活）
+config = DinoxConfig(
+    api_token="YOUR_TOKEN",
+    base_url="https://api.chatgo.pro",  # 默认笔记服务器
+    timeout=30.0
+)
+client = DinoxClient(config=config)
+
+# 方式三：从环境变量读取（需要设置 DINOX_API_TOKEN）
+import os
+os.environ['DINOX_API_TOKEN'] = "YOUR_TOKEN"
+client = DinoxClient()  # 自动从环境变量读取
+
+# 2. 异步使用示例
+async def example():
+    async with DinoxClient(api_token="YOUR_TOKEN") as client:
+        # 获取笔记
+        notes = await client.get_notes_list()
+        
+        # 搜索笔记（需要使用 AI 服务器）
+        ai_config = DinoxConfig(
+            api_token="YOUR_TOKEN",
+            base_url="https://aisdk.chatgo.pro"
+        )
+        async with DinoxClient(config=ai_config) as ai_client:
+            results = await ai_client.search_notes(["Python", "AI"])
+            
+# 运行异步函数
+asyncio.run(example())
+```
 
 ### 场景 1：查询和管理笔记（笔记服务器）
 
@@ -326,6 +396,54 @@ client = DinoxClient(config=config)
 **原因**：该 API 端点暂未部署
 
 **解决方案**：使用其他可用的 API 方法，参考上面的 API 状态表
+
+---
+
+## ❓ 常见问题
+
+### 1. PyPI 包名与模块名的区别是什么？
+
+- **安装时使用**: `dinox-api`（连字符）
+  ```bash
+  pip install dinox-api
+  ```
+- **导入时使用**: `dinox_client`（下划线）
+  ```python
+  from dinox_client import DinoxClient
+  ```
+- **原因**: Python 模块名不支持连字符，但 PyPI 包名可以使用
+
+### 2. PyPI 安装和源码安装有什么区别？
+
+**没有任何区别！** 两种安装方式：
+- 功能完全相同
+- API 完全相同
+- 使用方法完全相同
+
+唯一的区别是安装方式：
+- PyPI: `pip install dinox-api`（更方便，自动处理依赖）
+- 源码: `git clone` + `pip install -r requirements.txt`（可以修改源码）
+
+### 3. 如何选择服务器地址？
+
+- **笔记服务器** (`https://api.chatgo.pro`): 
+  - 用于: 获取笔记列表、查询笔记详情、同步笔记
+  - 特点: 只读操作，稳定可靠
+  
+- **AI 服务器** (`https://aisdk.chatgo.pro`): 
+  - 用于: 搜索笔记、创建笔记、获取卡片盒
+  - 特点: 支持写入操作，AI 功能
+
+### 4. Token 在哪里获取？
+
+联系 Dinox 管理员获取您的 API Token。获取后请妥善保管，避免泄露。
+
+### 5. 为什么要使用异步？
+
+- 提高并发性能
+- 非阻塞 I/O 操作
+- 更好的资源利用
+- 符合现代 Python 开发趋势
 
 ---
 
