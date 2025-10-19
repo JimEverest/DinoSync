@@ -47,11 +47,14 @@ pip install -e .
 
 ```python
 import asyncio
+import os
 from dinox_client import DinoxClient  # 导入方式完全相同
 
 async def main():
-    # 使用你的 API Token
-    async with DinoxClient(api_token="YOUR_TOKEN") as client:
+    # 方式1：从环境变量或 .env 文件自动加载 Token（推荐）
+    token = os.environ.get('DINOX_API_TOKEN', 'YOUR_TOKEN')
+    
+    async with DinoxClient(api_token=token) as client:
         # 获取笔记列表
         notes = await client.get_notes_list()
         print(f"获取到 {len(notes)} 天的笔记")
@@ -59,10 +62,30 @@ async def main():
 asyncio.run(main())
 ```
 
+**配置 Token 的三种方法：**
+
+1. **环境变量（推荐）**
+   ```bash
+   export DINOX_API_TOKEN="your_token"  # Linux/Mac
+   $env:DINOX_API_TOKEN="your_token"    # Windows PowerShell
+   ```
+
+2. **.env 文件（推荐）**
+   ```
+   # 创建 .env 文件
+   DINOX_API_TOKEN=your_token
+   ```
+
+3. **代码中直接指定**
+   ```python
+   client = DinoxClient(api_token="YOUR_TOKEN")
+   ```
+
 **注意事项：**
 - 📌 模块名是 `dinox_client`（下划线），不是 `dinox-api`（连字符）
 - 📌 使用方法与源码安装完全相同
 - 📌 支持所有文档中描述的功能和配置选项
+- 📌 Token 可以从环境变量或 .env 文件自动加载
 
 ### 从源码使用
 
@@ -96,10 +119,14 @@ DINOX_API_TOKEN=your_actual_token_here
 
 ```python
 import asyncio
+import os
 from dinox_client import DinoxClient
 
 async def main():
-    async with DinoxClient(api_token="YOUR_TOKEN") as client:
+    # 从环境变量或 .env 文件读取 Token
+    token = os.environ.get('DINOX_API_TOKEN', 'YOUR_TOKEN')
+    
+    async with DinoxClient(api_token=token) as client:
         # 获取笔记列表
         notes = await client.get_notes_list()
         print(f"获取到 {len(notes)} 天的笔记")
@@ -125,32 +152,37 @@ asyncio.run(main())
 # 1. 基础配置
 from dinox_client import DinoxClient, DinoxConfig
 import asyncio
+import os
 
-# 方式一：直接传入 token
+# 方式一：从环境变量或 .env 文件读取（推荐）
+token = os.environ.get('DINOX_API_TOKEN', 'YOUR_TOKEN')
+client = DinoxClient(api_token=token)
+
+# 方式二：直接传入 token
 client = DinoxClient(api_token="YOUR_TOKEN")
 
-# 方式二：使用配置对象（更灵活）
+# 方式三：使用配置对象（更灵活）
 config = DinoxConfig(
-    api_token="YOUR_TOKEN",
+    api_token=token,  # 使用环境变量中的 token
     base_url="https://api.chatgo.pro",  # 默认笔记服务器
     timeout=30.0
 )
 client = DinoxClient(config=config)
 
-# 方式三：从环境变量读取（需要设置 DINOX_API_TOKEN）
-import os
-os.environ['DINOX_API_TOKEN'] = "YOUR_TOKEN"
-client = DinoxClient()  # 自动从环境变量读取
+# 注意：DinoxClient 不会自动读取环境变量，需要手动传入
+# token = os.environ.get('DINOX_API_TOKEN')
+# client = DinoxClient(api_token=token)
 
 # 2. 异步使用示例
 async def example():
-    async with DinoxClient(api_token="YOUR_TOKEN") as client:
+    token = os.environ.get('DINOX_API_TOKEN', 'YOUR_TOKEN')
+    async with DinoxClient(api_token=token) as client:
         # 获取笔记
         notes = await client.get_notes_list()
         
         # 搜索笔记（需要使用 AI 服务器）
         ai_config = DinoxConfig(
-            api_token="YOUR_TOKEN",
+            api_token=token,
             base_url="https://aisdk.chatgo.pro"
         )
         async with DinoxClient(config=ai_config) as ai_client:
@@ -340,12 +372,24 @@ token = os.environ.get("DINOX_API_TOKEN")
 dinox_api_py/
 ├── dinox_client.py           # 核心客户端库
 ├── test_dinox_client.py      # 测试套件（22个测试）
+├── test_pypi_complete.py     # PyPI包完整功能测试
+├── test_pypi_install.py      # PyPI包简单导入测试
+├── demo_pypi_usage.py        # PyPI包使用演示
 ├── example.py                # 使用示例
+├── setup.py                  # PyPI包配置
+├── pyproject.toml           # 现代Python打包配置
+├── LICENSE                  # MIT许可证
 ├── requirements.txt          # 项目依赖
 ├── .env                      # 环境变量（不提交到Git）
 ├── env.example              # 环境变量模板
 ├── .gitignore               # Git忽略文件
 ├── README.md                # 本文件
+├── TESTING_GUIDE.md         # 测试指南
+├── PYPI_SETUP_GUIDE.md      # PyPI发布指南
+├── .github/                 # GitHub Actions工作流
+│   └── workflows/
+│       ├── test.yml         # 自动测试
+│       └── publish-to-pypi.yml  # 自动发布
 └── docs/                    # 详细文档
     ├── Python客户端使用文档.md
     ├── 获取笔记列表（同步接口）.md
@@ -379,6 +423,31 @@ client = DinoxClient(config=config)
 - 单次获取笔记列表：~1.2秒
 - 5个并发请求：~1.5秒（总计）
 - 平均响应时间：~0.3秒/请求
+
+---
+
+## 🧪 测试
+
+### 运行测试脚本
+
+项目包含完整的测试脚本，可以验证 PyPI 包是否正常工作：
+
+```bash
+# 1. 安装包
+pip install dinox-api
+
+# 2. 配置 Token（可选）
+echo "DINOX_API_TOKEN=your_token" > .env
+
+# 3. 运行测试
+python test_pypi_complete.py  # 完整功能测试
+python test_pypi_install.py   # 简单导入测试
+python demo_pypi_usage.py     # 使用演示
+```
+
+测试脚本会自动从环境变量或 .env 文件加载 Token。
+
+更多测试信息请查看 [TESTING_GUIDE.md](TESTING_GUIDE.md)
 
 ---
 
