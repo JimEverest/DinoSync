@@ -1,10 +1,29 @@
 # Dinox API Python 客户端
 
-[![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![PyPI version](https://badge.fury.io/py/dinox-api.svg)](https://badge.fury.io/py/dinox-api)
+[![Python Version](https://img.shields.io/badge/python-3.7+-blue.svg)](https://www.python.org/downloads/)
+[![Tests](https://github.com/JimEverest/DinoSync/actions/workflows/test.yml/badge.svg)](https://github.com/JimEverest/DinoSync/actions/workflows/test.yml)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-22%2F22%20passing-brightgreen.svg)]()
 
 一个功能完整、易于使用的 Python 异步客户端库，用于与 Dinox AI 笔记服务进行交互。
+
+---
+
+## 📦 安装
+
+### 通过 PyPI 安装（推荐）
+
+```bash
+pip install dinox-api
+```
+
+### 从源码安装
+
+```bash
+git clone https://github.com/JimEverest/DinoSync.git
+cd DinoSync
+pip install -e .
+```
 
 ---
 
