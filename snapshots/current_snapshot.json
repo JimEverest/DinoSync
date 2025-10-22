@@ -1,0 +1,73 @@
+{
+  "timestamp": "2025-10-22T13:00:45.784427",
+  "client_version": "0.2.0",
+  "overall_status": "HEALTHY",
+  "summary": {
+    "total_tests": 5,
+    "passed": 4,
+    "failed": 0,
+    "expected_failures": 1,
+    "timeouts": 0
+  },
+  "servers": {
+    "note_server": {
+      "url": "https://dinoai.chatgo.pro",
+      "description": "笔记服务器 - 负责笔记查询和管理",
+      "status": "HEALTHY",
+      "tests": [
+        {
+          "name": "get_notes_list",
+          "description": "获取笔记列表（增量同步）",
+          "status": "PASS",
+          "critical": true,
+          "known_issue": null,
+          "error": null,
+          "response_time_ms": 484
+        },
+        {
+          "name": "get_note_by_id",
+          "description": "根据ID获取笔记",
+          "status": "EXPECTED_FAIL",
+          "critical": false,
+          "known_issue": "端点可能未部署或路径变更",
+          "error": "预期错误: [404] {\"timestamp\":1761109245457,\"status\":404,\"error\":\"Not Found\",\"path\":\"/api/openapi/note/test-id-12345\"}",
+          "response_time_ms": 15
+        }
+      ]
+    },
+    "ai_server": {
+      "url": "https://aisdk.chatgo.pro",
+      "description": "AI 服务器 - 负责搜索和创建功能",
+      "status": "HEALTHY",
+      "tests": [
+        {
+          "name": "search_notes",
+          "description": "搜索笔记内容",
+          "status": "PASS",
+          "critical": true,
+          "known_issue": null,
+          "error": null,
+          "response_time_ms": 2188
+        },
+        {
+          "name": "get_zettelboxes",
+          "description": "获取卡片盒列表",
+          "status": "PASS",
+          "critical": false,
+          "known_issue": null,
+          "error": null,
+          "response_time_ms": 61
+        },
+        {
+          "name": "create_note",
+          "description": "创建测试笔记",
+          "status": "PASS",
+          "critical": true,
+          "known_issue": null,
+          "error": null,
+          "response_time_ms": 47
+        }
+      ]
+    }
+  }
+}

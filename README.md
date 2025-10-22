@@ -304,6 +304,30 @@ config = DinoxConfig(
 client = DinoxClient(config=config)
 ```
 
+### 🆕 v0.2.0 新特性：自动服务器路由
+
+从 v0.2.0 开始，客户端支持**自动服务器路由**，无需手动选择服务器：
+
+```python
+# v0.2.0+ 自动路由（推荐）
+async with DinoxClient(api_token="YOUR_TOKEN") as client:
+    # 自动使用笔记服务器
+    notes = await client.get_notes_list()
+    
+    # 自动使用 AI 服务器
+    results = await client.search_notes(["关键词"])
+    boxes = await client.get_zettelboxes()
+```
+
+如需禁用自动路由并手动控制：
+```python
+config = DinoxConfig(
+    api_token="YOUR_TOKEN",
+    base_url="https://aisdk.chatgo.pro",
+    auto_route=False  # 禁用自动路由
+)
+```
+
 ### 可用的方法
 
 | 方法 | 功能 | 服务器 | 状态 |
@@ -313,7 +337,225 @@ client = DinoxClient(config=config)
 | `search_notes(keywords)` | 搜索笔记 | AI服务器 | ✅ 可用 |
 | `get_zettelboxes()` | 获取卡片盒列表 | AI服务器 | ✅ 可用 |
 | `create_note(content, ...)` | 创建笔记（支持卡片盒） | AI服务器 | ✅ 可用 |
+| `create_text_note(content)` | 创建文字笔记 | AI服务器 | ✅ 可用 |
+| `update_note(note_id, content_md)` | 更新笔记内容 | 笔记服务器 | ✅ 可用 |
 | `format_sync_time(dt)` | 格式化同步时间 | 本地 | ✅ 可用 |
+
+### 📚 完整 API 参考
+
+#### DinoxClient 类
+
+```python
+class DinoxClient(api_token: str = None, config: DinoxConfig = None, auto_route: bool = True)
+```
+
+**参数：**
+- `api_token` (str, optional): API Token (JWT格式)
+- `config` (DinoxConfig, optional): 配置对象，如果提供则忽略 api_token
+- `auto_route` (bool, optional): 是否启用自动服务器路由，默认 True (v0.2.0+)
+
+#### DinoxConfig 类
+
+```python
+@dataclass
+class DinoxConfig:
+    api_token: str                    # API Token（必需）
+    base_url: str = "https://dinoai.chatgo.pro"  # 基础 URL
+    timeout: int = 30                 # 超时时间（秒）
+    auto_route: bool = True          # 自动路由 (v0.2.0+)
+```
+
+#### 1. get_notes_list()
+
+获取笔记列表，支持增量同步。
+
+```python
+async def get_notes_list(
+    last_sync_time: str = "1900-01-01 00:00:00",
+    template: str = None
+) -> List[Dict[str, Any]]
+```
+
+**参数：**
+- `last_sync_time` (str): 上次同步时间，格式 "YYYY-MM-DD HH:mm:ss"
+- `template` (str, optional): Mustache 模板字符串
+
+**返回：** 按日期分组的笔记列表
+
+**示例：**
+```python
+# 获取所有笔记
+notes = await client.get_notes_list()
+
+# 增量同步
+recent_notes = await client.get_notes_list(
+    last_sync_time="2025-10-20 00:00:00"
+)
+
+# 遍历结果
+for day_note in notes:
+    print(f"日期: {day_note['date']}")
+    for note in day_note['notes']:
+        print(f"  - {note['title']}: {note['noteId']}")
+```
+
+#### 2. get_note_by_id()
+
+根据 ID 获取笔记详情。
+
+```python
+async def get_note_by_id(note_id: str) -> Dict[str, Any]
+```
+
+**参数：**
+- `note_id` (str): 笔记的唯一标识符（UUID）
+
+**返回：** 笔记详情字典
+
+**示例：**
+```python
+note = await client.get_note_by_id("0199eb0d-fccc-7dc8-82da-7d32be3e668b")
+print(f"标题: {note['title']}")
+print(f"内容: {note['content']}")
+print(f"创建时间: {note['createTime']}")
+```
+
+#### 3. search_notes()
+
+搜索笔记内容。
+
+```python
+async def search_notes(keywords: List[str]) -> Dict[str, Any]
+```
+
+**参数：**
+- `keywords` (List[str]): 搜索关键词列表
+
+**返回：** 包含搜索结果的字典
+
+**示例：**
+```python
+results = await client.search_notes(["Python", "异步", "API"])
+content = results.get('content', '')
+print(f"找到内容: {content[:200]}...")
+```
+
+#### 4. create_note()
+
+创建新笔记，支持卡片盒。
+
+```python
+async def create_note(
+    content: str,
+    note_type: str = "note",
+    zettelbox_ids: List[str] = None
+) -> Dict[str, Any]
+```
+
+**参数：**
+- `content` (str): 笔记内容（支持 Markdown）
+- `note_type` (str): 笔记类型，"note" 或 "crawl"，默认 "note"
+- `zettelbox_ids` (List[str], optional): 卡片盒 ID 列表
+
+**返回：** 创建结果
+
+**示例：**
+```python
+# 创建简单笔记
+result = await client.create_note(
+    content="# 我的笔记\n\n这是笔记内容"
+)
+
+# 创建带卡片盒的笔记
+result = await client.create_note(
+    content="# 项目笔记\n\n重要内容...",
+    note_type="note",
+    zettelbox_ids=["box-id-1", "box-id-2"]
+)
+```
+
+#### 5. create_text_note()
+
+创建纯文本笔记。
+
+```python
+async def create_text_note(content: str) -> Dict[str, Any]
+```
+
+**参数：**
+- `content` (str): 笔记文本内容
+
+**返回：** 创建结果
+
+**示例：**
+```python
+result = await client.create_text_note("这是一条简单的文本笔记")
+```
+
+#### 6. update_note()
+
+更新现有笔记。
+
+```python
+async def update_note(note_id: str, content_md: str) -> Dict[str, Any]
+```
+
+**参数：**
+- `note_id` (str): 要更新的笔记 ID
+- `content_md` (str): 新的笔记内容（Markdown 格式）
+
+**返回：** 更新结果
+
+**示例：**
+```python
+result = await client.update_note(
+    note_id="0199eb0d-fccc-7dc8-82da-7d32be3e668b",
+    content_md="# 更新后的标题\n\n更新后的内容..."
+)
+```
+
+#### 7. get_zettelboxes()
+
+获取所有卡片盒列表。
+
+```python
+async def get_zettelboxes() -> List[Dict[str, Any]]
+```
+
+**返回：** 卡片盒列表
+
+**示例：**
+```python
+boxes = await client.get_zettelboxes()
+for box in boxes:
+    print(f"卡片盒: {box.get('name', '未命名')}")
+    print(f"  ID: {box.get('id')}")
+```
+
+#### 8. format_sync_time()
+
+格式化时间为同步时间格式。
+
+```python
+@staticmethod
+def format_sync_time(dt: datetime = None) -> str
+```
+
+**参数：**
+- `dt` (datetime, optional): 要格式化的时间，默认为当前时间
+
+**返回：** 格式化的时间字符串 "YYYY-MM-DD HH:mm:ss"
+
+**示例：**
+```python
+# 当前时间
+current_sync_time = DinoxClient.format_sync_time()
+
+# 指定时间
+from datetime import datetime
+specific_time = datetime(2025, 10, 20, 15, 30, 0)
+formatted = DinoxClient.format_sync_time(specific_time)
+```
 
 ---
 

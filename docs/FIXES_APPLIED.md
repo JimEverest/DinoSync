@@ -271,7 +271,7 @@ All tests completed successfully!
 ### 之前的问题：
 ```python
 # test_dinox_client.py
-TEST_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ..."  # 😱 硬编码
+TEST_TOKEN = "ezyJhbGci..."  # 😱 硬编码
 ```
 
 ### 现在的实现：

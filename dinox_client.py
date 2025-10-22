@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Dinox API 异步客户端
 
@@ -5,7 +6,10 @@ Dinox API 异步客户端
 
 Author: Dinox Team
 License: MIT
+Version: 0.2.0
 """
+
+__version__ = "0.2.0"
 
 import aiohttp
 import asyncio
@@ -13,7 +17,36 @@ from typing import List, Dict, Any, Optional, Union
 from dataclasses import dataclass
 from datetime import datetime
 import json
+import sys
+import io
 
+# Fix Windows encoding issues
+if sys.platform == 'win32':
+    try:
+        if hasattr(sys.stdout, 'reconfigure'):
+            sys.stdout.reconfigure(encoding='utf-8')
+            sys.stderr.reconfigure(encoding='utf-8')
+    except (AttributeError, io.UnsupportedOperation):
+        pass
+
+
+# Server URLs
+NOTE_SERVER_URL = "https://dinoai.chatgo.pro"
+AI_SERVER_URL = "https://aisdk.chatgo.pro"
+
+# Method-to-server mapping for automatic routing
+METHOD_SERVER_MAP = {
+    # Note Server methods
+    "get_notes_list": NOTE_SERVER_URL,
+    "get_note_by_id": NOTE_SERVER_URL,
+    "update_note": NOTE_SERVER_URL,
+    
+    # AI Server methods
+    "search_notes": AI_SERVER_URL,
+    "create_note": AI_SERVER_URL,
+    "create_text_note": AI_SERVER_URL,
+    "get_zettelboxes": AI_SERVER_URL,
+}
 
 @dataclass
 class DinoxConfig:
@@ -25,10 +58,12 @@ class DinoxConfig:
     - https://aisdk.chatgo.pro - 搜索和创建API（search_notes, create_note等）
     
     默认使用 dinoai，如需使用搜索功能请切换到 aisdk
+    自动路由：设置 auto_route=True 可自动选择合适的服务器（v0.2.0+新功能）
     """
     api_token: str
     base_url: str = "https://dinoai.chatgo.pro"
     timeout: int = 30
+    auto_route: bool = True  # 新增：自动路由功能
     
     def __post_init__(self):
         """验证配置"""
@@ -57,22 +92,26 @@ class DinoxClient:
             print(f"获取到 {len(notes)} 天的笔记")
     """
     
-    def __init__(self, api_token: str = None, config: DinoxConfig = None):
+    def __init__(self, api_token: str = None, config: DinoxConfig = None, auto_route: bool = True):
         """
         初始化 Dinox 客户端
         
         Args:
             api_token: API Token (JWT格式)
             config: DinoxConfig 配置对象，如果提供则忽略 api_token
+            auto_route: 是否启用自动服务器路由 (v0.2.0+)
         """
         if config:
             self.config = config
         elif api_token:
-            self.config = DinoxConfig(api_token=api_token)
+            self.config = DinoxConfig(api_token=api_token, auto_route=auto_route)
         else:
             raise ValueError("Either api_token or config must be provided")
         
         self.session: Optional[aiohttp.ClientSession] = None
+        self.note_session: Optional[aiohttp.ClientSession] = None  # Note server session
+        self.ai_session: Optional[aiohttp.ClientSession] = None    # AI server session
+        self._current_method: Optional[str] = None  # Track current method for auto-routing
     
     async def __aenter__(self):
         """异步上下文管理器入口"""
@@ -85,15 +124,30 @@ class DinoxClient:
     
     async def connect(self):
         """创建 HTTP 会话"""
-        if self.session is None:
-            timeout = aiohttp.ClientTimeout(total=self.config.timeout)
-            self.session = aiohttp.ClientSession(timeout=timeout)
+        timeout = aiohttp.ClientTimeout(total=self.config.timeout)
+        
+        if self.config.auto_route:
+            # Create separate sessions for each server when auto-routing
+            if self.note_session is None:
+                self.note_session = aiohttp.ClientSession(timeout=timeout)
+            if self.ai_session is None:
+                self.ai_session = aiohttp.ClientSession(timeout=timeout)
+        else:
+            # Create single session for manual routing
+            if self.session is None:
+                self.session = aiohttp.ClientSession(timeout=timeout)
     
     async def close(self):
         """关闭 HTTP 会话"""
         if self.session:
             await self.session.close()
             self.session = None
+        if self.note_session:
+            await self.note_session.close()
+            self.note_session = None
+        if self.ai_session:
+            await self.ai_session.close()
+            self.ai_session = None
     
     def _get_headers(self, extra_headers: Dict[str, str] = None) -> Dict[str, str]:
         """
@@ -122,7 +176,7 @@ class DinoxClient:
         extra_headers: Dict[str, str] = None
     ) -> Dict[str, Any]:
         """
-        发送 HTTP 请求
+        发送 HTTP 请求 (支持自动服务器路由 v0.2.0+)
         
         Args:
             method: HTTP 方法 (GET, POST, PUT, DELETE)
@@ -137,14 +191,37 @@ class DinoxClient:
         Raises:
             DinoxAPIError: API 错误
         """
-        if not self.session:
-            await self.connect()
+        # Determine which server and session to use
+        if self.config.auto_route and self._current_method:
+            # Use automatic routing based on the method
+            if self._current_method in METHOD_SERVER_MAP:
+                server_url = METHOD_SERVER_MAP[self._current_method]
+                if server_url == NOTE_SERVER_URL:
+                    if not self.note_session:
+                        await self.connect()
+                    session = self.note_session
+                else:  # AI_SERVER_URL
+                    if not self.ai_session:
+                        await self.connect()
+                    session = self.ai_session
+            else:
+                # Default to note server for unknown methods
+                server_url = self.config.base_url
+                if not self.note_session:
+                    await self.connect()
+                session = self.note_session
+        else:
+            # Use manual routing with configured base_url
+            server_url = self.config.base_url
+            if not self.session:
+                await self.connect()
+            session = self.session or self.note_session or self.ai_session
         
-        url = f"{self.config.base_url}{endpoint}"
+        url = f"{server_url}{endpoint}"
         headers = self._get_headers(extra_headers)
         
         try:
-            async with self.session.request(
+            async with session.request(
                 method=method,
                 url=url,
                 json=data,
@@ -220,6 +297,7 @@ class DinoxClient:
             ...     print(f"日期: {day_note['date']}")
             ...     print(f"笔记数: {len(day_note['notes'])}")
         """
+        self._current_method = "get_notes_list"  # Set method for auto-routing
         if template is None:
             template = self._get_default_template()
         
@@ -246,6 +324,7 @@ class DinoxClient:
             >>> note = await client.get_note_by_id("0199eb0d-fccc-7dc8-82da-7d32be3e668b")
             >>> print(note['title'])
         """
+        self._current_method = "get_note_by_id"  # Set method for auto-routing
         result = await self._request("GET", f"/api/openapi/note/{note_id}")
         return result
     
@@ -263,6 +342,7 @@ class DinoxClient:
             >>> result = await client.search_notes(["Python", "异步"])
             >>> print(result['content'])
         """
+        self._current_method = "search_notes"  # Set method for auto-routing
         data = {"keywords": keywords}
         result = await self._request("POST", "/api/openapi/searchNotes", data=data)
         return result.get('data', {})
@@ -288,6 +368,7 @@ class DinoxClient:
             >>> result = await client.create_text_note("这是一条测试笔记")
             >>> print(result)
         """
+        self._current_method = "create_text_note"  # Set method for auto-routing
         data = {"content": content}
         result = await self._request("POST", "/openapi/text/input", data=data)
         return result
@@ -315,6 +396,7 @@ class DinoxClient:
             ...     zettelbox_ids=["box-id-1"]
             ... )
         """
+        self._current_method = "create_note"  # Set method for auto-routing
         data = {
             "type": note_type,
             "content": content,
@@ -340,6 +422,7 @@ class DinoxClient:
             ...     content_md="更新后的内容"
             ... )
         """
+        self._current_method = "update_note"  # Set method for auto-routing
         data = {
             "noteId": note_id,
             "contentMd": content_md
@@ -361,6 +444,7 @@ class DinoxClient:
             >>> for box in boxes:
             ...     print(box['name'])
         """
+        self._current_method = "get_zettelboxes"  # Set method for auto-routing
         result = await self._request("GET", "/api/openapi/zettelboxes")
         return result.get('data', [])
     
