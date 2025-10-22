@@ -6,10 +6,10 @@ Dinox API 异步客户端
 
 Author: Dinox Team
 License: MIT
-Version: 0.2.0
+Version: 0.3.0
 """
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 import aiohttp
 import asyncio
@@ -53,24 +53,19 @@ class DinoxConfig:
     """
     Dinox 客户端配置
     
-    注意：Dinox 有两个 API 服务器：
-    - https://dinoai.chatgo.pro - 笔记查询API（get_notes_list, get_note_by_id等）
-    - https://aisdk.chatgo.pro - 搜索和创建API（search_notes, create_note等）
+    v0.2.0+ 自动服务器路由：
+    - 笔记服务器 (https://dinoai.chatgo.pro): get_notes_list, get_note_by_id, update_note
+    - AI服务器 (https://aisdk.chatgo.pro): search_notes, create_note, get_zettelboxes
     
-    默认使用 dinoai，如需使用搜索功能请切换到 aisdk
-    自动路由：设置 auto_route=True 可自动选择合适的服务器（v0.2.0+新功能）
+    客户端会自动选择正确的服务器，无需手动配置
     """
     api_token: str
-    base_url: str = "https://dinoai.chatgo.pro"
     timeout: int = 30
-    auto_route: bool = True  # 新增：自动路由功能
     
     def __post_init__(self):
         """验证配置"""
         if not self.api_token:
             raise ValueError("API token is required")
-        # 移除 base_url 末尾的斜杠
-        self.base_url = self.base_url.rstrip('/')
 
 
 class DinoxAPIError(Exception):
@@ -92,23 +87,24 @@ class DinoxClient:
             print(f"获取到 {len(notes)} 天的笔记")
     """
     
-    def __init__(self, api_token: str = None, config: DinoxConfig = None, auto_route: bool = True):
+    def __init__(self, api_token: str = None, config: DinoxConfig = None):
         """
-        初始化 Dinox 客户端
+        初始化 Dinox 客户端 (v0.2.0+ 自动服务器路由)
         
         Args:
             api_token: API Token (JWT格式)
             config: DinoxConfig 配置对象，如果提供则忽略 api_token
-            auto_route: 是否启用自动服务器路由 (v0.2.0+)
+        
+        Note:
+            v0.2.0+ 客户端自动根据调用的方法选择正确的服务器，无需手动配置
         """
         if config:
             self.config = config
         elif api_token:
-            self.config = DinoxConfig(api_token=api_token, auto_route=auto_route)
+            self.config = DinoxConfig(api_token=api_token)
         else:
             raise ValueError("Either api_token or config must be provided")
         
-        self.session: Optional[aiohttp.ClientSession] = None
         self.note_session: Optional[aiohttp.ClientSession] = None  # Note server session
         self.ai_session: Optional[aiohttp.ClientSession] = None    # AI server session
         self._current_method: Optional[str] = None  # Track current method for auto-routing
@@ -123,25 +119,17 @@ class DinoxClient:
         await self.close()
     
     async def connect(self):
-        """创建 HTTP 会话"""
+        """创建 HTTP 会话 (自动为两个服务器创建独立会话)"""
         timeout = aiohttp.ClientTimeout(total=self.config.timeout)
         
-        if self.config.auto_route:
-            # Create separate sessions for each server when auto-routing
-            if self.note_session is None:
-                self.note_session = aiohttp.ClientSession(timeout=timeout)
-            if self.ai_session is None:
-                self.ai_session = aiohttp.ClientSession(timeout=timeout)
-        else:
-            # Create single session for manual routing
-            if self.session is None:
-                self.session = aiohttp.ClientSession(timeout=timeout)
+        # Create separate sessions for each server
+        if self.note_session is None:
+            self.note_session = aiohttp.ClientSession(timeout=timeout)
+        if self.ai_session is None:
+            self.ai_session = aiohttp.ClientSession(timeout=timeout)
     
     async def close(self):
         """关闭 HTTP 会话"""
-        if self.session:
-            await self.session.close()
-            self.session = None
         if self.note_session:
             await self.note_session.close()
             self.note_session = None
@@ -176,7 +164,7 @@ class DinoxClient:
         extra_headers: Dict[str, str] = None
     ) -> Dict[str, Any]:
         """
-        发送 HTTP 请求 (支持自动服务器路由 v0.2.0+)
+        发送 HTTP 请求 (v0.2.0+ 自动服务器路由)
         
         Args:
             method: HTTP 方法 (GET, POST, PUT, DELETE)
@@ -191,31 +179,18 @@ class DinoxClient:
         Raises:
             DinoxAPIError: API 错误
         """
-        # Determine which server and session to use
-        if self.config.auto_route and self._current_method:
-            # Use automatic routing based on the method
-            if self._current_method in METHOD_SERVER_MAP:
-                server_url = METHOD_SERVER_MAP[self._current_method]
-                if server_url == NOTE_SERVER_URL:
-                    if not self.note_session:
-                        await self.connect()
-                    session = self.note_session
-                else:  # AI_SERVER_URL
-                    if not self.ai_session:
-                        await self.connect()
-                    session = self.ai_session
-            else:
-                # Default to note server for unknown methods
-                server_url = self.config.base_url
-                if not self.note_session:
-                    await self.connect()
-                session = self.note_session
+        # Ensure sessions are created
+        if not self.note_session or not self.ai_session:
+            await self.connect()
+        
+        # Automatic routing based on the current method
+        if self._current_method and self._current_method in METHOD_SERVER_MAP:
+            server_url = METHOD_SERVER_MAP[self._current_method]
+            session = self.note_session if server_url == NOTE_SERVER_URL else self.ai_session
         else:
-            # Use manual routing with configured base_url
-            server_url = self.config.base_url
-            if not self.session:
-                await self.connect()
-            session = self.session or self.note_session or self.ai_session
+            # Default to note server for unknown methods
+            server_url = NOTE_SERVER_URL
+            session = self.note_session
         
         url = f"{server_url}{endpoint}"
         headers = self._get_headers(extra_headers)

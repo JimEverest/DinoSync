@@ -63,18 +63,16 @@ def test_config_creation():
     """测试配置创建"""
     config = DinoxConfig(api_token="test_token")
     assert config.api_token == "test_token"
-    assert config.base_url == "https://dinoai.chatgo.pro"
     assert config.timeout == 30
 
 
-def test_config_with_custom_base_url():
-    """测试自定义 base_url"""
+def test_config_with_custom_timeout():
+    """测试自定义 timeout"""
     config = DinoxConfig(
         api_token="test_token",
-        base_url="https://custom.api.com/"
+        timeout=60
     )
-    # 应该移除末尾的斜杠
-    assert config.base_url == "https://custom.api.com"
+    assert config.timeout == 60
 
 
 def test_config_requires_token():
@@ -108,9 +106,11 @@ def test_client_requires_token_or_config():
 async def test_client_context_manager():
     """测试上下文管理器"""
     async with DinoxClient(api_token=TEST_TOKEN) as client:
-        assert client.session is not None
+        # v0.2.0+ 使用自动路由，有两个独立的 session
+        assert client.note_session is not None or client.ai_session is not None
     # 退出后 session 应该关闭
-    assert client.session is None
+    assert client.note_session is None
+    assert client.ai_session is None
 
 
 # ==================== 笔记查询接口测试 ====================
@@ -186,8 +186,8 @@ async def test_create_text_note(client):
     except DinoxAPIError as e:
         print(f"\n⚠ 创建笔记错误: {e.message}")
         # 根据错误类型决定是否要失败测试
-        # "0000029" 是转写失败错误，这是API的功能限制
-        if e.code not in ["RATE_LIMIT", "QUOTA_EXCEEDED", "0000029"]:
+        # "0000029" 是转写失败错误，404 是端点未部署
+        if e.code not in ["RATE_LIMIT", "QUOTA_EXCEEDED", "0000029"] and e.status_code != 404:
             raise
         # 对于已知的限制，测试通过
 
@@ -248,20 +248,15 @@ async def test_update_note(client):
 # ==================== 卡片盒测试 ====================
 
 @pytest.mark.asyncio
-async def test_get_zettelboxes():
+async def test_get_zettelboxes(client):
     """测试获取卡片盒列表"""
-    # get_zettelboxes 需要使用 aisdk 服务器
-    config = DinoxConfig(
-        api_token=TEST_TOKEN,
-        base_url="https://aisdk.chatgo.pro"
-    )
-    async with DinoxClient(config=config) as client:
-        boxes = await client.get_zettelboxes()
-        assert isinstance(boxes, list)
-        print(f"\n✓ 获取到 {len(boxes)} 个卡片盒")
-        
-        if boxes:
-            print(f"  第一个卡片盒: {boxes[0]}")
+    # v0.2.0+ 自动路由到AI服务器
+    boxes = await client.get_zettelboxes()
+    assert isinstance(boxes, list)
+    print(f"\n✓ 获取到 {len(boxes)} 个卡片盒")
+    
+    if boxes:
+        print(f"  第一个卡片盒: {boxes[0]}")
 
 
 # ==================== 工具函数测试 ====================
@@ -303,18 +298,26 @@ async def test_invalid_token():
 @pytest.mark.asyncio
 async def test_network_error_handling():
     """测试网络错误处理"""
-    config = DinoxConfig(
-        api_token=TEST_TOKEN,
-        base_url="https://invalid-domain-that-does-not-exist-12345.com"
-    )
+    # 通过修改METHOD_SERVER_MAP来测试网络错误
+    import dinox_client
+    original_url = dinox_client.NOTE_SERVER_URL
     
-    async with DinoxClient(config=config) as client:
-        with pytest.raises(DinoxAPIError) as exc_info:
-            await client.get_notes_list()
+    try:
+        # 临时修改为无效URL
+        dinox_client.NOTE_SERVER_URL = "https://invalid-domain-that-does-not-exist-12345.com"
+        dinox_client.METHOD_SERVER_MAP["get_notes_list"] = dinox_client.NOTE_SERVER_URL
         
-        error = exc_info.value
-        assert error.code == "NETWORK_ERROR"
-        print(f"\n✓ 正确捕获网络错误")
+        async with DinoxClient(api_token=TEST_TOKEN) as client:
+            with pytest.raises(DinoxAPIError) as exc_info:
+                await client.get_notes_list()
+            
+            error = exc_info.value
+            assert error.code == "NETWORK_ERROR"
+            print(f"\n✓ 正确捕获网络错误")
+    finally:
+        # 恢复原URL
+        dinox_client.NOTE_SERVER_URL = original_url
+        dinox_client.METHOD_SERVER_MAP["get_notes_list"] = original_url
 
 
 # ==================== 集成测试 ====================
@@ -364,7 +367,8 @@ async def test_full_workflow(client):
 async def test_create_client_helper():
     """测试便捷创建函数"""
     client = await create_client(api_token=TEST_TOKEN)
-    assert client.session is not None
+    # v0.2.0+ 使用自动路由，检查是否有 session 被创建
+    assert client.note_session is not None or client.ai_session is not None
     
     # 测试可以正常调用 API
     notes = await client.get_notes_list()

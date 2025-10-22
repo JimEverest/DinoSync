@@ -83,9 +83,9 @@ async def example_incremental_sync():
 
 
 async def example_search():
-    """搜索笔记示例 - 使用 AI 服务器"""
+    """搜索笔记示例"""
     print("\n" + "="*60)
-    print("示例 3: 搜索笔记（AI服务器）")
+    print("示例 3: 搜索笔记")
     print("="*60)
     
     token = os.environ.get("DINOX_API_TOKEN")
@@ -93,31 +93,25 @@ async def example_search():
         print("❌ 请设置 DINOX_API_TOKEN 环境变量")
         return
     
-    # ⚠️ 搜索功能需要使用 AI 服务器
-    config = DinoxConfig(
-        api_token=token,
-        base_url="https://aisdk.chatgo.pro"  # AI 服务器
-    )
-    
-    async with DinoxClient(config=config) as client:
+    # v0.2.0+ 自动路由到AI服务器
+    async with DinoxClient(api_token=token) as client:
         try:
-            # 搜索关键词
             keywords = ["测试", "test"]
             result = await client.search_notes(keywords=keywords)
             
-            print(f"\n✓ 服务器: {config.base_url}")
-            print(f"✓ 搜索关键词: {', '.join(keywords)}")
+            print(f"\n✓ 搜索关键词: {', '.join(keywords)}")
             if 'content' in result:
                 print(f"✓ 找到内容长度: {len(result['content'])} 字符")
+            print(f"✓ 自动路由到: AI服务器")
             
         except DinoxAPIError as e:
             print(f"[ERROR] [{e.code}] {e.message}")
 
 
 async def example_create_note():
-    """创建笔记示例 - 使用 AI 服务器"""
+    """创建笔记示例"""
     print("\n" + "="*60)
-    print("示例 4: 创建笔记（AI服务器）")
+    print("示例 4: 创建笔记")
     print("="*60)
     
     token = os.environ.get("DINOX_API_TOKEN")
@@ -125,15 +119,9 @@ async def example_create_note():
         print("❌ 请设置 DINOX_API_TOKEN 环境变量")
         return
     
-    # ⚠️ 创建笔记功能需要使用 AI 服务器
-    config = DinoxConfig(
-        api_token=token,
-        base_url="https://aisdk.chatgo.pro"  # AI 服务器
-    )
-    
-    async with DinoxClient(config=config) as client:
+    # v0.2.0+ 自动路由到AI服务器
+    async with DinoxClient(api_token=token) as client:
         try:
-            # 创建一个简单的笔记
             content = f"""# Python 客户端测试
 
 创建时间: {datetime.now().isoformat()}
@@ -143,7 +131,7 @@ async def example_create_note():
 ## 功能
 
 - ✅ 异步支持
-- ✅ 完整的 API 覆盖
+- ✅ 自动服务器路由
 - ✅ 类型提示
 - ✅ 错误处理
 """
@@ -153,18 +141,18 @@ async def example_create_note():
                 note_type="note"
             )
             
-            print(f"\n✓ 服务器: {config.base_url}")
-            print("✓ 笔记创建成功!")
-            print(f"  内容: {content.split(chr(10))[0]}")  # 显示标题
+            print("\n✓ 笔记创建成功!")
+            print(f"  内容: {content.split(chr(10))[0]}")
+            print(f"✓ 自动路由到: AI服务器")
             
         except DinoxAPIError as e:
             print(f"⚠ {e.message}")
 
 
 async def example_get_zettelboxes():
-    """获取卡片盒示例 - 使用 AI 服务器"""
+    """获取卡片盒示例"""
     print("\n" + "="*60)
-    print("示例 5: 获取卡片盒（AI服务器）")
+    print("示例 5: 获取卡片盒")
     print("="*60)
     
     token = os.environ.get("DINOX_API_TOKEN")
@@ -172,20 +160,14 @@ async def example_get_zettelboxes():
         print("❌ 请设置 DINOX_API_TOKEN 环境变量")
         return
     
-    # ⚠️ 卡片盒功能需要使用 AI 服务器
-    config = DinoxConfig(
-        api_token=token,
-        base_url="https://aisdk.chatgo.pro"  # AI 服务器
-    )
-    
-    async with DinoxClient(config=config) as client:
+    # v0.2.0+ 自动路由到AI服务器
+    async with DinoxClient(api_token=token) as client:
         try:
-            # 获取所有卡片盒
             boxes = await client.get_zettelboxes()
             
-            print(f"\n✓ 服务器: {config.base_url}")
-            print(f"✓ 获取到 {len(boxes)} 个卡片盒")
-            for i, box in enumerate(boxes[:5], 1):  # 显示前5个
+            print(f"\n✓ 获取到 {len(boxes)} 个卡片盒")
+            print(f"✓ 自动路由到: AI服务器")
+            for i, box in enumerate(boxes[:5], 1):
                 name = box.get('name', '(未命名)')
                 print(f"  {i}. 📦 {name}")
                 
@@ -193,10 +175,10 @@ async def example_get_zettelboxes():
             print(f"[ERROR] [{e.code}] {e.message}")
 
 
-async def example_two_servers():
-    """两个服务器使用示例"""
+async def example_auto_routing():
+    """自动路由示例 - v0.2.0新特性"""
     print("\n" + "="*60)
-    print("示例 6: 使用两个不同的服务器")
+    print("示例 6: 自动服务器路由（v0.2.0+）")
     print("="*60)
     
     token = os.environ.get("DINOX_API_TOKEN")
@@ -204,38 +186,28 @@ async def example_two_servers():
         print("❌ 请设置 DINOX_API_TOKEN 环境变量")
         return
     
-    # 场景1：使用笔记服务器获取笔记
-    print("\n【场景1】使用笔记服务器:")
-    config_notes = DinoxConfig(
-        api_token=token,
-        base_url="https://dinoai.chatgo.pro"  # 笔记服务器
-    )
-    
-    async with DinoxClient(config=config_notes) as client:
+    # 一个客户端，自动路由到不同服务器
+    async with DinoxClient(api_token=token) as client:
+        print("\n使用同一个客户端实例:\n")
+        
+        # 自动路由到笔记服务器
         try:
             notes = await client.get_notes_list()
-            print(f"  ✓ 服务器: {config_notes.base_url}")
-            print(f"  ✓ 功能: 获取笔记列表")
-            print(f"  ✓ 结果: {len(notes)} 天的笔记")
+            print(f"  ✓ get_notes_list() → 自动路由到笔记服务器")
+            print(f"    结果: {len(notes)} 天的笔记")
         except DinoxAPIError as e:
             print(f"  ✗ 错误: {e.message}")
-    
-    # 场景2：使用 AI 服务器搜索和创建
-    print("\n【场景2】使用 AI 服务器:")
-    config_ai = DinoxConfig(
-        api_token=token,
-        base_url="https://aisdk.chatgo.pro"  # AI 服务器
-    )
-    
-    async with DinoxClient(config=config_ai) as client:
+        
+        # 自动路由到AI服务器
         try:
             result = await client.search_notes(["测试"])
-            print(f"  ✓ 服务器: {config_ai.base_url}")
-            print(f"  ✓ 功能: 搜索笔记")
+            print(f"  ✓ search_notes() → 自动路由到AI服务器")
             if 'content' in result:
-                print(f"  ✓ 结果: 找到内容")
+                print(f"    结果: 找到内容")
         except DinoxAPIError as e:
             print(f"  ✗ 错误: {e.message}")
+        
+        print(f"\n💡 无需手动切换服务器，完全自动！")
 
 
 async def example_concurrent_requests():
@@ -296,7 +268,7 @@ async def main():
         await example_search()
         await example_create_note()
         await example_get_zettelboxes()
-        await example_two_servers()
+        await example_auto_routing()
         await example_concurrent_requests()
         
         print("\n" + "="*60)
