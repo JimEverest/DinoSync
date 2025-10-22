@@ -17,15 +17,15 @@
 
 ### 端点状态矩阵
 
-| 方法 | 端点 | 服务器 | 状态 | 说明 |
-|-----|------|--------|------|------|
-| `get_notes_list()` | `/openapi/v5/notes` | Note | ✅ | 完全正常 |
-| `get_note_by_id()` | `/api/openapi/note/{id}` | Note | ⚠️ | 返回404，可能未部署 |
-| `search_notes()` | `/api/openapi/searchNotes` | AI | ✅ | 完全正常 |
-| `create_note()` | `/api/openapi/createNote` | AI | ✅ | 完全正常 |
-| `create_text_note()` | `/openapi/text/input` | AI | ⚠️ | 返回404 |
-| `get_zettelboxes()` | `/api/openapi/zettelboxes` | AI | ✅ | 完全正常 |
-| `update_note()` | `/openapi/updateNote` | Note | ⚠️ | 可能未部署 |
+| 方法 | 完整上游Endpoint | 服务器 | 状态 | 说明 |
+|-----|-----------------|--------|------|------|
+| `get_notes_list()` | `POST https://dinoai.chatgo.pro/openapi/v5/notes` | 笔记 | ✅ | 完全正常 |
+| `get_note_by_id()` | `GET https://dinoai.chatgo.pro/openapi/v5/notes/{id}` | 笔记 | ✅ | 完全正常 |
+| `update_note()` | `PUT https://dinoai.chatgo.pro/openapi/v5/notes/{id}` | 笔记 | ✅ | 完全正常 |
+| `search_notes()` | `POST https://aisdk.chatgo.pro/openapi/v5/notes/search` | AI | ✅ | 完全正常 |
+| `create_note()` | `POST https://aisdk.chatgo.pro/openapi/v5/notes/create` | AI | ✅ | 完全正常 |
+| `create_text_note()` | `POST https://aisdk.chatgo.pro/openapi/v5/notes/text` | AI | ⚠️ | 返回404，端点未部署 |
+| `get_zettelboxes()` | `GET https://aisdk.chatgo.pro/openapi/v5/zettelboxes` | AI | ✅ | 完全正常 |
 
 **图例:** ✅ 正常 | ⚠️ 部分可用/已知问题 | ❌ 不可用
 

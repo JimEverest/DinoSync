@@ -49,29 +49,32 @@
 
 ### 2. [API.md](API.md) - API完整参考 (4KB)
 
-**用途:** 详细的方法文档
+**用途:** 详细的方法文档和上游端点映射
 
 **包含内容:**
+- ✅ **上游服务器说明** (两个独立服务器)
 - ✅ DinoxClient 类定义
 - ✅ DinoxConfig 类定义
-- ✅ 8个API方法完整文档：
-  - get_notes_list()
-  - get_note_by_id()
-  - search_notes()
-  - create_note()
-  - create_text_note()
-  - update_note()
-  - get_zettelboxes()
-  - format_sync_time()
+- ✅ **7个API方法完整文档：**
+  - get_notes_list() - **完整Endpoint:** `POST https://dinoai.chatgo.pro/openapi/v5/notes`
+  - get_note_by_id() - **完整Endpoint:** `GET https://dinoai.chatgo.pro/openapi/v5/notes/{id}`
+  - search_notes() - **完整Endpoint:** `POST https://aisdk.chatgo.pro/openapi/v5/notes/search`
+  - create_note() - **完整Endpoint:** `POST https://aisdk.chatgo.pro/openapi/v5/notes/create`
+  - create_text_note() - **完整Endpoint:** `POST https://aisdk.chatgo.pro/openapi/v5/notes/text`
+  - update_note() - **完整Endpoint:** `PUT https://dinoai.chatgo.pro/openapi/v5/notes/{id}`
+  - get_zettelboxes() - **完整Endpoint:** `GET https://aisdk.chatgo.pro/openapi/v5/zettelboxes`
+- ✅ 每个方法的完整上游Endpoint URL
 - ✅ 每个方法的参数、返回值、示例
 - ✅ 错误处理说明
-- ✅ 服务器映射表
+- ✅ 自动服务器路由映射表
 - ✅ 响应格式示例
 
 **什么时候看:**
 - ⭐ 需要了解方法的详细参数
+- ⭐ 想知道调用的是哪个上游Endpoint
 - ⭐ 想看完整的代码示例
 - ⭐ 不确定返回值格式
+- ⭐ 需要调试上游API问题
 
 ---
 
@@ -82,10 +85,9 @@
 **包含内容:**
 - ✅ **当前API状态** (实时更新)
   - 服务器状态表（URL、状态、响应时间）
-  - 端点状态矩阵（7个方法的详细状态）
-- ✅ **已知问题列表** (2个)
-  - 问题#1: get_note_by_id() 返回404
-  - 问题#2: create_text_note() 返回404
+  - **端点状态矩阵**（7个方法 + 完整上游Endpoint URL）
+- ✅ **已知问题列表**
+  - 问题#1: create_text_note() 返回404（端点未部署）
 - ✅ **诊断决策树**
   - 网络错误 → 处理方法
   - 认证错误 → 处理方法
