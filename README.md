@@ -375,3 +375,7 @@ MIT License - 详见 [LICENSE](LICENSE)
 - **PyPI:** https://pypi.org/project/dinox-api/
 - **官网:** https://dinox.info
 
+
+## Update 
+- pyproject.toml
+- setup.py
