@@ -39,7 +39,7 @@ METHOD_SERVER_MAP = {
     # Note Server methods
     "get_notes_list": NOTE_SERVER_URL,
     "get_note_by_id": NOTE_SERVER_URL,
-    "update_note": NOTE_SERVER_URL,
+    "update_note": AI_SERVER_URL,
     
     # AI Server methods
     "search_notes": AI_SERVER_URL,
@@ -375,18 +375,30 @@ class DinoxClient:
         data = {
             "type": note_type,
             "content": content,
-            "zettelboxIds": zettelbox_ids or []
+            "zettelboxIds": zettelbox_ids or [],
+            "tags": [
+                "string"
+            ],
+            "title": "string"
         }
         result = await self._request("POST", "/api/openapi/createNote", data=data)
         return result
     
-    async def update_note(self, note_id: str, content_md: str) -> Dict[str, Any]:
+    async def update_note(
+        self,
+        note_id: str,
+        content_md: str,
+        tags: List[str] = None,
+        title: str = None
+    ) -> Dict[str, Any]:
         """
         更新笔记
         
         Args:
             note_id: 笔记 ID
             content_md: 笔记内容（Markdown 格式）
+            tags: 标签列表
+            title: 标题
             
         Returns:
             更新结果
@@ -394,7 +406,9 @@ class DinoxClient:
         Example:
             >>> result = await client.update_note(
             ...     note_id="0199eb0d-fccc-7dc8-82da-7d32be3e668b",
-            ...     content_md="更新后的内容"
+            ...     content_md="更新后的内容",
+            ...     tags=["test"],
+            ...     title="New Title"
             ... )
         """
         self._current_method = "update_note"  # Set method for auto-routing
@@ -402,7 +416,12 @@ class DinoxClient:
             "noteId": note_id,
             "contentMd": content_md
         }
-        result = await self._request("POST", "/openapi/updateNote", data=data)
+        if tags is not None:
+            data["tags"] = tags
+        if title is not None:
+            data["title"] = title
+            
+        result = await self._request("POST", "/api/openapi/updateNote", data=data)
         return result
     
     # ==================== 卡片盒接口 ====================
