@@ -6,7 +6,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="dinox-api",
-    version="0.3.1",
+    version="0.3.2",
     author="JimEverest",
     author_email="",  # Add your email if desired
     description="Python client for DinoX API - A note-taking and knowledge management system",
